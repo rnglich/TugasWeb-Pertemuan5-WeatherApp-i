@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATMOS — WeatherApp</title>
+  <meta name="description" content="WetaherApp-Cek Cuaca Di Daerahmu" />
+  <meta property="og:title" content="Atmos - WeatherApp">
+  <meta property="og:description" content="Sebelum bepergian sebaiknya lihat kondisi cuaca di Kota mu!!!">
+  <meta property="og:type" content="website">
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tipografi editorial: Fraunces (display) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <script>
+    // Konfigurasi kecil Tailwind
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fraunces', 'serif'],
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+
+<body class="bg-neutral-100 text-neutral-900">
+
+  <!-- Skip link: aksesibilitas keyboard -->
+  <a href="#panelCuaca" class="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:bg-white focus:text-black focus:px-4 focus:py-2">
+    Lewati ke panel cuaca
+  </a>
+
+  <!-- Loader global: status polite agar dibaca screen reader -->
+  <div id="topLoader" role="status" aria-live="polite" aria-label="Memuat data cuaca" class="fixed top-0 left-0 right-0 h-[2px] z-50 opacity-0 pointer-events-none bg-transparent">
+    <div class="loading-bar h-full w-2/5 bg-current opacity-70"></div>
+  </div>
+
+  <!-- ROOT LAYOUT: stack vertikal (mobile) → split 60:40 (desktop) -->
+  <main class="flex flex-col lg:flex-row min-h-screen">
+
+    <!-- ============ SISI KIRI 60% : CUACA SAAT INI ==================== -->
+    <section
+      id="heroPanel"
+      aria-labelledby="cityName"
+      class="relative overflow-hidden lg:w-[60%] min-h-[92vh] lg:h-screen lg:sticky lg:top-0 flex flex-col justify-between lg:justify-start text-white"
+      style="background: linear-gradient(180deg,#123a6d 0%,#2f6cb3 55%,#8fb8e8 100%);"
+    >
+      <!-- Lapisan dekoratif (diisi app.js §5), disembunyikan dari AT -->
+      <div id="weatherFx" class="absolute inset-0 pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%);" aria-hidden="true"></div>
+
+      <!-- Kepala hero: identitas + waktu lokal -->
+      <header class="relative z-10 flex items-start justify-between px-7 pt-7 lg:px-14 lg:pt-8">
+        <div>
+          <p class="text-[11px] tracking-[0.35em] uppercase opacity-80">Atmos — WeatherApp</p>
+          <time id="heroDate" class="mt-2 block text-xs tracking-[0.2em] uppercase opacity-70">—</time>
+        </div>
+        <div class="text-right">
+          <time id="heroClock" class="font-display text-2xl leading-none tabular-nums">--:--</time>
+          <p class="mt-1 text-[11px] tracking-[0.25em] uppercase opacity-70">Waktu lokal</p>
+        </div>
+      </header>
+
+      <!-- Artikel utama: kota + suhu + kondisi (diisi app.js §6) -->
+      <article aria-labelledby="cityName" class="relative z-10 px-7 lg:px-14 mt-6 lg:mt-4">
+        <p class="text-[11px] tracking-[0.4em] uppercase opacity-80">Kota saat ini</p>
+        <h1 id="cityName" class="font-display font-light leading-[0.95] tracking-tight text-[15vw] lg:text-[3.75rem] xl:text-[4.5rem] mt-3">
+          Jakarta
+        </h1>
+
+        <div class="mt-2 flex items-end gap-5 flex-wrap">
+          <p aria-live="polite" aria-atomic="true" class="font-display font-light leading-[0.85] tracking-tighter tabular-nums text-[38vw] sm:text-[30vw] lg:text-[7.5rem] xl:text-[9rem]">
+            <data id="bigTemp" value="">--</data><span id="bigUnit" class="text-[0.28em] align-top tracking-normal opacity-80">°C</span>
+          </p>
+          <figure class="pb-4 lg:pb-8">
+            <div class="flex items-center gap-3">
+              <img id="weatherIcon" src="" alt="" class="w-12 h-12 hidden" />
+              <figcaption id="mainCond" class="text-sm lg:text-base tracking-[0.3em] uppercase">Memuat…</figcaption>
+            </div>
+            <p id="descText" class="mt-2 font-display italic text-xl lg:text-2xl opacity-90 capitalize">mengambil data atmosfer</p>
+            <p id="heroStatus" role="status" class="mt-3 text-[11px] tracking-[0.3em] uppercase opacity-70 pulse-soft">Menghubungi OpenWeatherMap…</p>
+          </figure>
+        </div>
+      </article>
+
+      <!-- Kaki hero: ringkasan meta; desktop ditempel ke bawah via mt-auto -->
+      <footer class="relative z-10 px-7 lg:px-14 pb-8 lg:pb-8 mt-10 lg:mt-auto lg:pt-6">
+        <hr class="hairline-t opacity-100 border-white/30" aria-hidden="true" />
+        <dl class="pt-5 flex flex-wrap gap-x-10 gap-y-3 text-sm">
+          <div><dt class="text-[10px] tracking-[0.3em] uppercase opacity-60">Terasa</dt><dd id="metaFeels" class="tabular-nums">—</dd></div>
+          <div><dt class="text-[10px] tracking-[0.3em] uppercase opacity-60">Lembap</dt><dd id="metaHum" class="tabular-nums">—</dd></div>
+          <div><dt class="text-[10px] tracking-[0.3em] uppercase opacity-60">Angin</dt><dd id="metaWind" class="tabular-nums">—</dd></div>
+          <div><dt class="text-[10px] tracking-[0.3em] uppercase opacity-60">Koordinat</dt><dd id="metaCoord" class="tabular-nums">—</dd></div>
+        </dl>
+      </footer>
+    </section>
+
+    <!-- ==================== SISI KANAN 40% : PANEL DATA ==================== -->
+    <aside
+      id="panelCuaca"
+      data-theme="light"
+      aria-label="Panel detail, prakiraan, dan pencarian cuaca"
+      class="lg:w-[40%] min-h-screen flex flex-col bg-[#FAFAF7] text-neutral-900 transition-colors duration-500"
+    >
+      <div class="px-7 lg:px-12 pt-8 lg:pt-12 pb-14 max-w-[640px] w-full mx-auto flex-1">
+
+        <!-- Kepala panel: masthead + kontrol satuan & tema -->
+        <header class="flex items-center justify-between gap-4">
+          <h2 class="font-display text-[1.35rem] leading-none font-light tracking-tight">Detail / Prakiraan</h2>
+          <div class="flex items-center gap-5 text-[11px] tracking-[0.25em] uppercase">
+            <div class="flex items-center gap-2" role="group" aria-label="Satuan suhu">
+              <button id="btnC" type="button" aria-pressed="true" class="underline underline-offset-4 font-semibold">°C</button>
+              <span class="opacity-40" aria-hidden="true">/</span>
+              <button id="btnF" type="button" aria-pressed="false" class="opacity-50 hover:opacity-100">°F</button>
+            </div>
+            <span class="opacity-20" aria-hidden="true">|</span>
+            <button id="themeToggle" type="button" class="opacity-70 hover:opacity-100 underline underline-offset-4">Gelap</button>
+          </div>
+        </header>
+
+        <hr class="hairline-b mt-5 opacity-20" aria-hidden="true" />
+
+        <!-- Seksi pencarian -->
+        <section aria-labelledby="searchHeading" class="mt-8">
+          <p class="eyebrow" aria-hidden="true">01 · Pencarian</p>
+          <h2 id="searchHeading" class="section-title">Cari kota</h2>
+          <!-- form search: semantik + Enter bawaan browser -->
+          <form id="searchForm" role="search" aria-label="Pencarian kota" class="mt-3 flex items-end gap-4">
+            <label for="searchInput" class="sr-only">Nama kota</label>
+            <input
+              id="searchInput"
+              name="kota"
+              type="search"
+              required
+              placeholder="cth: Bandung, Tokyo, London…"
+              autocomplete="off"
+              enterkeyhint="search"
+              class="field-underline flex-1 text-2xl lg:text-[1.7rem] font-display font-light py-2"
+            />
+            <button id="searchBtn" type="submit" class="shrink-0 text-[12px] tracking-[0.25em] uppercase border-b pb-2 hover:opacity-60 transition">
+              Cari →
+            </button>
+          </form>
+
+          <!-- Riwayat: nav + list agar terbaca sebagai daftar -->
+          <section aria-labelledby="historyHeading" class="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-2 text-sm">
+            <h3 id="historyHeading" class="subsection-title mr-1">Terakhir</h3>
+            <nav aria-label="Riwayat pencarian">
+              <ul id="historyList" class="flex flex-wrap items-baseline gap-x-2 gap-y-1"></ul>
+            </nav>
+          </section>
+
+        </section>
+
+        <!-- Pesan galat: live region assertive -->
+        <div id="errorBox" hidden role="alert" aria-live="assertive" class="mt-7 border-y py-4" style="border-color: currentColor;">
+          <p class="text-[11px] tracking-[0.3em] uppercase opacity-60">Perhatian</p>
+          <p id="errorMsg" class="mt-1 font-display text-lg leading-snug"></p>
+        </div>
+
+        <!-- Seksi detail atmosfer -->
+        <section aria-labelledby="detailHeading" class="mt-9">
+          <p class="eyebrow" aria-hidden="true">02 · Atmosfer</p>
+          <h2 id="detailHeading" class="section-title">Detail atmosfer</h2>
+          <dl id="detailList" class="mt-2 text-[15px] leading-relaxed"></dl>
+        </section>
+
+        <!-- Seksi prakiraan 5 hari: tabel ber-caption + scope -->
+        <section aria-labelledby="forecastHeading" class="mt-10">
+          <header class="flex items-baseline justify-between gap-4">
+            <div>
+              <p class="eyebrow" aria-hidden="true">03 · Prakiraan</p>
+              <h2 id="forecastHeading" class="section-title">Prakiraan 5 hari</h2>
+            </div>
+            <p class="text-[11px] tracking-[0.2em] uppercase opacity-40">12:00 / hari</p>
+          </header>
+          <div class="mt-3 overflow-x-auto">
+            <table class="w-full text-sm">
+              <caption class="sr-only">Prakiraan cuaca lima hari ke depan pada pukul dua belas siang</caption>
+              <thead>
+                <tr class="text-[11px] tracking-[0.2em] uppercase opacity-50 text-left">
+                  <th scope="col" class="font-normal py-2 pr-4">Hari</th>
+                  <th scope="col" class="font-normal py-2 pr-4">Kondisi</th>
+                  <th scope="col" class="font-normal py-2 pr-4 text-right">Min</th>
+                  <th scope="col" class="font-normal py-2 pr-4 text-right">Max</th>
+                  <th scope="col" class="font-normal py-2 text-right">Lembap</th>
+                </tr>
+              </thead>
+              <tbody id="forecastBody" class="tabular-nums"></tbody>
+            </table>
+          </div>
+          <hr class="hairline-t mt-1 opacity-20" aria-hidden="true" />
+        </section>
+
+        <!-- Bagian tren suhu: figure + figcaption -->
+        <section aria-labelledby="trendHeading" class="mt-10">
+          <header class="flex items-baseline justify-between gap-4">
+            <div>
+              <p class="eyebrow" aria-hidden="true">04 · Tren</p>
+              <h2 id="trendHeading" class="section-title">Tren 24 jam</h2>
+            </div>
+            <p id="trendRange" class="text-xs opacity-50 tabular-nums"></p>
+          </header>
+          <figure class="mt-4">
+            <div id="trendChart" role="img" aria-label="Grafik garis tren suhu 24 jam"></div>
+            <figcaption>
+              <div id="trendLabels" class="mt-2 flex justify-between text-[11px] tabular-nums opacity-50" aria-hidden="true"></div>
+              <p class="mt-3 text-xs opacity-50 leading-relaxed">Line chart frameless — dari prakiraan cuaca 24 jam.</p>
+            </figcaption>
+          </figure>
+        </section>
+
+        <!-- Footer panel -->
+        <footer class="mt-10">
+          <hr class="hairline-t opacity-20" aria-hidden="true" />
+          <p class="mt-4 text-[11px] tracking-[0.2em] uppercase opacity-40 leading-relaxed">
+            Atmos - weather app
+          </p>
+          <p class="mt-3 text-[9px] tracking-[0.2em] uppercase opacity-40 leading-relaxed">
+            ©2026-rnglich
+          </p>
+        </footer>
+      </div>
+    </aside>
+  </main>
+
+  <noscript><p style="padding:1rem;text-align:center">Aktifkan JavaScript untuk memuat data cuaca.</p></noscript>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
